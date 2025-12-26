@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "Movie": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Movie",
+      "type": "object",
+      "description": "Represents a movie in the CineMagic system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Movie entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the movie."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief summary or description of the movie's plot."
+        },
+        "genre": {
+          "type": "string",
+          "description": "The genre of the movie (e.g., Action, Comedy, Drama)."
+        },
+        "releaseYear": {
+          "type": "number",
+          "description": "The year the movie was released."
+        },
+        "poster": {
+          "type": "string",
+          "description": "The filename or relative path to the movie's poster image."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time when the movie entry was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/movies/{movieId}",
+        "definition": {
+          "entityName": "Movie",
+          "schema": {
+            "$ref": "#/backend/entities/Movie"
+          },
+          "description": "Stores movie data. Each document represents a single movie.",
+          "params": [
+            {
+              "name": "movieId",
+              "description": "Unique identifier for the movie document."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to manage movie data effectively. A single collection `/movies` is used to store all movie documents. This approach simplifies querying and avoids unnecessary complexity. Each movie document contains all the necessary information, including title, description, genre, release year, poster, and creation timestamp. Authentication is handled by Firebase Auth, which is sufficient for basic user management in this context. This design prioritizes simplicity and ease of management for a movie management system."
+  }
+}
