@@ -5,11 +5,11 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { enhanceMoviePoster } from '@/ai/flows/enhance-movie-poster';
 import { collection, addDoc, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { initializeFirebaseForServer } from '@/firebase/server-init';
 
 // Since server actions run on the server, we can initialize a server-side instance of firestore
 // In a more robust app, you might have a separate admin SDK setup.
-const { firestore } = initializeFirebase();
+const { firestore } = initializeFirebaseForServer();
 const moviesCollection = collection(firestore, 'movies');
 
 // CREATE
