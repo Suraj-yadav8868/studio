@@ -1,3 +1,4 @@
+'use client';
 import type { Movie } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';

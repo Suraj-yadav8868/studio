@@ -1,23 +1,33 @@
-import { getMovieById } from '@/app/actions';
+'use client';
+import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clapperboard, Edit, Tag } from 'lucide-react';
+import { Calendar, Edit, Tag } from 'lucide-react';
 import DeleteMovieDialog from '@/components/DeleteMovieDialog';
 import EnhancePosterDialog from '@/components/EnhancePosterDialog';
 import type { Movie } from '@/lib/types';
+import { doc } from 'firebase/firestore';
+import Loading from '@/app/loading';
 
-type MovieDetailsPageProps = {
-  params: {
-    id: string;
-  };
-};
+export default function MovieDetailsPage() {
+  const params = useParams();
+  const id = params.id as string;
+  const { firestore } = useFirebase();
 
-export default async function MovieDetailsPage({ params }: MovieDetailsPageProps) {
-  const movie = await getMovieById(params.id) as Movie;
+  const movieRef = useMemoFirebase(() => {
+    if (!firestore || !id) return null;
+    return doc(firestore, 'movies', id);
+  }, [firestore, id]);
+
+  const { data: movie, isLoading } = useDoc<Movie>(movieRef);
+
+  if (isLoading) {
+    return <Loading />;
+  }
 
   if (!movie) {
     notFound();

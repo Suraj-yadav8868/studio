@@ -1,19 +1,36 @@
+'use client';
 import { getMovieById } from '@/app/actions';
 import MovieForm from '@/components/MovieForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import type { Movie } from '@/lib/types';
+import Loading from '@/app/loading';
 
-type EditMoviePageProps = {
-  params: {
-    id: string;
-  };
-};
+export default function EditMoviePage() {
+  const params = useParams();
+  const id = params.id as string;
+  const [movie, setMovie] = useState<Movie | null>(null);
+  const [loading, setLoading] = useState(true);
 
-export default async function EditMoviePage({ params }: EditMoviePageProps) {
-  const movie = await getMovieById(params.id);
+  useEffect(() => {
+    if (!id) return;
+    const fetchMovie = async () => {
+      setLoading(true);
+      const movieData = await getMovieById(id);
+      if (movieData) {
+        setMovie(movieData as Movie);
+      } else {
+        notFound();
+      }
+      setLoading(false);
+    };
+    fetchMovie();
+  }, [id]);
+  
 
-  if (!movie) {
-    notFound();
+  if (loading || !movie) {
+    return <Loading />;
   }
 
   return (

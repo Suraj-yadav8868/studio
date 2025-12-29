@@ -1,14 +1,17 @@
 'use server';
 
-import { movies } from '@/lib/data';
 import { movieSchema, type MovieFormData } from '@/lib/schemas';
-import type { Movie } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { enhanceMoviePoster } from '@/ai/flows/enhance-movie-poster';
+import { collection, addDoc, doc, updateDoc, deleteDoc, getDoc, getFirestore } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
 
-// Helper function to simulate network delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// Since server actions run on the server, we can initialize a server-side instance of firestore
+// Note: This is a temporary solution for this specific file.
+// In a more robust app, you might have a separate admin SDK setup.
+const { firestore } = initializeFirebase();
+const moviesCollection = collection(firestore, 'movies');
 
 // CREATE
 export async function addMovie(formData: MovieFormData) {
@@ -21,41 +24,35 @@ export async function addMovie(formData: MovieFormData) {
     };
   }
 
-  const newMovie: Movie = {
-    id: crypto.randomUUID(),
-    ...validatedFields.data,
-  };
-
-  await delay(1000);
-  movies.unshift(newMovie);
-
-  revalidatePath('/');
-  redirect(`/movies/${newMovie.id}`);
-}
-
-// READ
-export async function getMovies(query: string): Promise<Movie[]> {
-  await delay(500);
-  if (!query) {
-    return movies;
+  try {
+    const docRef = await addDoc(moviesCollection, {
+      ...validatedFields.data,
+      createdAt: new Date().toISOString(),
+    });
+    revalidatePath('/');
+    redirect(`/movies/${docRef.id}`);
+  } catch (error) {
+    console.error("Error adding document: ", error);
+    // In a real app, handle this more gracefully
+    return { message: 'Failed to add movie.' };
   }
-  return movies.filter(movie =>
-    movie.title.toLowerCase().includes(query.toLowerCase())
-  );
 }
 
-export async function getMovieById(id: string): Promise<Movie | undefined> {
-  await delay(500);
-  return movies.find(movie => movie.id === id);
+// READ (Single)
+export async function getMovieById(id: string) {
+  const docRef = doc(firestore, 'movies', id);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() };
+  } else {
+    return undefined;
+  }
 }
+
 
 // UPDATE
 export async function updateMovie(id: string, formData: MovieFormData) {
-  const movieIndex = movies.findIndex(movie => movie.id === id);
-  if (movieIndex === -1) {
-    throw new Error('Movie not found');
-  }
-
   const validatedFields = movieSchema.safeParse(formData);
   if (!validatedFields.success) {
     return {
@@ -64,29 +61,30 @@ export async function updateMovie(id: string, formData: MovieFormData) {
     };
   }
   
-  await delay(1000);
-  movies[movieIndex] = {
-    ...movies[movieIndex],
-    ...validatedFields.data,
-  };
+  const docRef = doc(firestore, 'movies', id);
 
-  revalidatePath('/');
-  revalidatePath(`/movies/${id}`);
-  redirect(`/movies/${id}`);
+  try {
+    await updateDoc(docRef, validatedFields.data);
+    revalidatePath('/');
+    revalidatePath(`/movies/${id}`);
+    redirect(`/movies/${id}`);
+  } catch (error) {
+    console.error("Error updating document: ", error);
+    return { message: 'Failed to update movie.' };
+  }
 }
 
 // DELETE
 export async function deleteMovie(id: string) {
-  const movieIndex = movies.findIndex(movie => movie.id === id);
-  if (movieIndex === -1) {
-    throw new Error('Movie not found');
+  const docRef = doc(firestore, 'movies', id);
+  try {
+    await deleteDoc(docRef);
+    revalidatePath('/');
+    redirect('/');
+  } catch (error) {
+    console.error("Error deleting document: ", error);
+    throw new Error('Failed to delete movie.');
   }
-
-  await delay(1000);
-  movies.splice(movieIndex, 1);
-
-  revalidatePath('/');
-  redirect('/');
 }
 
 // AI ENHANCEMENT
