@@ -24,20 +24,22 @@ export async function addMovie(formData: MovieFormData) {
     };
   }
 
-  if (!validatedFields.data.userId) {
+  const { userId, ...movieData } = validatedFields.data;
+
+  if (!userId) {
     return { message: 'You must be logged in to add a movie.' };
   }
 
   try {
     const docRef = await addDoc(moviesCollection, {
-      ...validatedFields.data,
+      ...movieData,
+      userId: userId, // Explicitly add the userId
       createdAt: new Date().toISOString(),
     });
     revalidatePath('/');
     redirect(`/movies/${docRef.id}`);
   } catch (error) {
     console.error("Error adding document: ", error);
-    // In a real app, handle this more gracefully
     return { message: 'Failed to add movie. Check permissions.' };
   }
 }
@@ -66,10 +68,12 @@ export async function updateMovie(id: string, formData: MovieFormData) {
   }
   
   const docRef = doc(firestore, 'movies', id);
+  const { userId, ...updateData } = validatedFields.data;
+
+  // Note: We don't need to check for userId here because the security rules handle ownership.
+  // The userId is also not part of the data being updated to prevent it from being changed.
 
   try {
-    // We remove userId from the update payload so it can't be changed.
-    const { userId, ...updateData } = validatedFields.data;
     await updateDoc(docRef, updateData);
     revalidatePath('/');
     revalidatePath(`/movies/${id}`);
