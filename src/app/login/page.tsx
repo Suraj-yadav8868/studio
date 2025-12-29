@@ -5,16 +5,43 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Clapperboard } from 'lucide-react';
-import Link from 'next/link';
+import { useAuth, useUser } from '@/firebase';
+import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
+import { Clapperboard, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function LoginPage() {
+    const { user, isUserLoading } = useUser();
+    const auth = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+        // If user is already logged in, redirect to home.
+        if (user) {
+            router.replace('/');
+        }
+    }, [user, router]);
+    
+    // As soon as the page loads and we know the user is not logged in,
+    // automatically trigger anonymous sign-in.
+    useEffect(() => {
+        if (!isUserLoading && !user) {
+            initiateAnonymousSignIn(auth);
+        }
+    }, [isUserLoading, user, auth]);
+
+    if (isUserLoading || user) {
+        return (
+            <div className="flex min-h-[80vh] items-center justify-center">
+                <Loader2 className="h-16 w-16 animate-spin text-primary" />
+            </div>
+        );
+    }
+
   return (
     <div className="flex min-h-[80vh] items-center justify-center">
       <Card className="w-full max-w-sm">
@@ -22,33 +49,14 @@ export default function LoginPage() {
             <div className="inline-block mx-auto">
                 <Clapperboard className="h-10 w-10 text-primary" />
             </div>
-          <CardTitle className="text-2xl font-headline">Welcome Back</CardTitle>
+          <CardTitle className="text-2xl font-headline">Welcome to CineMagic</CardTitle>
           <CardDescription>
-            Enter your email and password to sign in to CineMagic
+            You are being signed in anonymously to manage your movie collection.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="m@example.com" required />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" required />
-          </div>
+        <CardContent className="flex items-center justify-center py-10">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </CardContent>
-        <CardFooter className="flex flex-col">
-          <Button className="w-full">Sign In</Button>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Link
-              href="#"
-              className="underline underline-offset-4 hover:text-primary"
-            >
-              Sign up
-            </Link>
-          </p>
-        </CardFooter>
       </Card>
     </div>
   );

@@ -2,53 +2,50 @@
  * This ruleset enforces a security model for the CineMagic movie catalog application.
  *
  * Core Philosophy:
- * The primary goal is to provide public, read-only access to a catalog of movies.
- * This allows any user, authenticated or not, to browse and view movie details.
- * All write operations (creating, updating, deleting movies) are currently disabled
- * as a secure default, pending schema changes to define content ownership.
+ * The primary goal is to provide public, read-only access to a catalog of movies,
+ * while allowing authenticated users to create, update, and delete their own entries.
  *
  * Data Structure:
  * The data is organized in a single top-level collection:
- * - /movies/{movieId}: Contains all individual movie documents.
+ * - /movies/{movieId}: Contains all individual movie documents. Each document
+ *   now includes a `userId` field to denote ownership.
  *
  * Key Security Decisions:
  * - Public Read Access: The `/movies` collection is publicly readable to everyone
  *   to facilitate browsing the catalog.
- * - Writes Disabled by Default: All write operations are disallowed (`if false`).
- *   To enable secure writes, the `Movie` data entity must be updated to include
- *   an ownership field (e.g., 'authorId' or 'creatorId'). The rules can then be
- *   updated to grant write access only to the designated owner.
+ * - Authenticated Writes: Users must be authenticated to create, update, or delete movies.
+ * - Owner-Only Write Access: Users can only modify or delete movies where their
+ *   `request.auth.uid` matches the `userId` field in the movie document. This ensures
+ *   users cannot tamper with entries they do not own.
  *
  * Denormalization for Authorization:
- * This ruleset is prepared for a denormalization strategy. Once an ownership field
- * like `authorId` is added directly to each movie document, the rules can be
- * easily updated to perform a fast and cheap ownership check without needing
+ * This ruleset uses a denormalization strategy by storing the `userId` directly on each
+ * movie document. This allows for fast and inexpensive ownership checks without needing
  * extra database reads.
- *
- * Structural Segregation:
- * Not applicable in this model, as all movie data is considered public.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Manages the movie catalog. Allows public read access but restricts all
-     *              write operations until a proper ownership model is defined in the data schema.
+     * @description Manages the movie catalog. Allows public read access but restricts
+     *              write operations to the authenticated owner of the document.
      * @path /movies/{movieId}
-     * @allow (get) Anyone, including unauthenticated users, can read a specific movie document.
-     * @deny (create) Any user attempting to create a new movie document. The schema is missing an ownership field.
-     * @principle Public Read with Secure Writes. Writes are currently disabled pending a schema update
-     *            to include an ownership field (e.g., 'authorId').
+     * @allow (get, list) Anyone, including unauthenticated users, can read movie documents.
+     * @allow (create) Any authenticated user can create a new movie, as long as they set themselves as the owner.
+     * @allow (update, delete) Only the user whose UID matches the `userId` on the document can modify or delete it.
      */
     match /movies/{movieId} {
-      allow get: if true;
-      allow list: if true;
+      allow read: if true;
 
-      // CRITICAL: Cannot implement owner-only writes. The 'Movie' entity is missing an 'ownerId' or 'authorId' field.
-      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      // Users must be authenticated to write data.
+      allow create: if request.auth != null
+                    // The incoming document's userId must match the creator's UID.
+                    && request.resource.data.userId == request.auth.uid;
+      
+      allow update, delete: if request.auth != null
+                            // The user's UID must match the userId on the existing document.
+                            && resource.data.userId == request.auth.uid;
     }
   }
 }

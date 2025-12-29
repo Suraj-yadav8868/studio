@@ -6,12 +6,23 @@ import { redirect } from 'next/navigation';
 import { enhanceMoviePoster } from '@/ai/flows/enhance-movie-poster';
 import { collection, addDoc, doc, updateDoc, deleteDoc, getDoc, getFirestore } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
+import { getAuth } from 'firebase/auth';
+import { headers } from 'next/headers';
 
 // Since server actions run on the server, we can initialize a server-side instance of firestore
 // Note: This is a temporary solution for this specific file.
 // In a more robust app, you might have a separate admin SDK setup.
 const { firestore } = initializeFirebase();
 const moviesCollection = collection(firestore, 'movies');
+
+async function getUserId(): Promise<string | null> {
+    // Server Actions can't use the client-side `useUser` hook.
+    // In a real app with full authentication, you'd get the user from the session.
+    // For now, we'll assume anonymous auth and that the client passes the UID.
+    // A better approach would be to verify a token passed in headers.
+    return headers().get('x-user-id');
+}
+
 
 // CREATE
 export async function addMovie(formData: MovieFormData) {
@@ -34,7 +45,7 @@ export async function addMovie(formData: MovieFormData) {
   } catch (error) {
     console.error("Error adding document: ", error);
     // In a real app, handle this more gracefully
-    return { message: 'Failed to add movie.' };
+    return { message: 'Failed to add movie. Check permissions.' };
   }
 }
 
@@ -64,13 +75,15 @@ export async function updateMovie(id: string, formData: MovieFormData) {
   const docRef = doc(firestore, 'movies', id);
 
   try {
-    await updateDoc(docRef, validatedFields.data);
+    // We remove userId from the update payload so it can't be changed.
+    const { userId, ...updateData } = validatedFields.data;
+    await updateDoc(docRef, updateData);
     revalidatePath('/');
     revalidatePath(`/movies/${id}`);
     redirect(`/movies/${id}`);
   } catch (error) {
     console.error("Error updating document: ", error);
-    return { message: 'Failed to update movie.' };
+    return { message: 'Failed to update movie. Check permissions.' };
   }
 }
 
@@ -83,7 +96,7 @@ export async function deleteMovie(id: string) {
     redirect('/');
   } catch (error) {
     console.error("Error deleting document: ", error);
-    throw new Error('Failed to delete movie.');
+    throw new Error('Failed to delete movie. Check permissions.');
   }
 }
 

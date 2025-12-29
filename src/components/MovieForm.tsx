@@ -8,6 +8,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { addMovie, updateMovie } from '@/app/actions';
 import { useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/firebase';
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { Input } from './ui/input';
@@ -25,6 +26,7 @@ export default function MovieForm({ movie }: MovieFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useUser();
 
   const form = useForm<MovieFormData>({
     resolver: zodResolver(movieSchema),
@@ -38,11 +40,20 @@ export default function MovieForm({ movie }: MovieFormProps) {
   });
 
   const onSubmit = (data: MovieFormData) => {
+    if (!user) {
+        toast({
+            variant: 'destructive',
+            title: 'Authentication Error',
+            description: 'You must be logged in to perform this action.',
+        });
+        return;
+    }
+    
     startTransition(async () => {
       const action = movie ? updateMovie.bind(null, movie.id) : addMovie;
-      const result = await action(data);
+      const result = await action({ ...data, userId: user.uid });
 
-      if (result?.errors) {
+      if (result?.message) {
         toast({
           variant: 'destructive',
           title: 'Error saving movie',
@@ -141,7 +152,7 @@ export default function MovieForm({ movie }: MovieFormProps) {
         />
         <div className="flex justify-end space-x-4">
             <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90">
+            <Button type="submit" disabled={isPending || !user} className="bg-primary hover:bg-primary/90">
             {isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (

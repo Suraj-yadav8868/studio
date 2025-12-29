@@ -1,5 +1,5 @@
 'use client';
-import { useDoc, useFirebase, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirebase, useMemoFirebase, useUser } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { notFound, useParams } from 'next/navigation';
 import Image from 'next/image';
@@ -17,6 +17,7 @@ export default function MovieDetailsPage() {
   const params = useParams();
   const id = params.id as string;
   const { firestore } = useFirebase();
+  const { user } = useUser();
 
   const movieRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -33,6 +34,7 @@ export default function MovieDetailsPage() {
     notFound();
   }
 
+  const isOwner = user && movie.userId === user.uid;
   const placeholder = PlaceHolderImages.find(p => p.id === movie.posterId);
 
   return (
@@ -73,18 +75,20 @@ export default function MovieDetailsPage() {
 
           <p className="text-lg leading-relaxed text-foreground/80 mb-8">{movie.description}</p>
           
-          <div className="flex flex-wrap gap-4">
-            <Button asChild>
-              <Link href={`/movies/${movie.id}/edit`}>
-                <Edit className="mr-2"/>
-                Edit
-              </Link>
-            </Button>
-            
-            <EnhancePosterDialog movie={movie} />
+          {isOwner && (
+            <div className="flex flex-wrap gap-4">
+              <Button asChild>
+                <Link href={`/movies/${movie.id}/edit`}>
+                  <Edit className="mr-2"/>
+                  Edit
+                </Link>
+              </Button>
+              
+              <EnhancePosterDialog movie={movie} />
 
-            <DeleteMovieDialog movieId={movie.id} movieTitle={movie.title} />
-          </div>
+              <DeleteMovieDialog movieId={movie.id} movieTitle={movie.title} />
+            </div>
+          )}
         </div>
       </div>
     </div>
