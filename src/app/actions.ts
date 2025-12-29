@@ -8,7 +8,6 @@ import { collection, addDoc, doc, updateDoc, deleteDoc, getDoc } from 'firebase/
 import { initializeFirebase } from '@/firebase';
 
 // Since server actions run on the server, we can initialize a server-side instance of firestore
-// Note: This is a temporary solution for this specific file.
 // In a more robust app, you might have a separate admin SDK setup.
 const { firestore } = initializeFirebase();
 const moviesCollection = collection(firestore, 'movies');
@@ -40,7 +39,8 @@ export async function addMovie(formData: MovieFormData) {
     redirect(`/movies/${docRef.id}`);
   } catch (error) {
     console.error("Error adding document: ", error);
-    return { message: 'Failed to add movie. Check permissions.' };
+    // This message will be shown to the user if firestore rules fail.
+    return { message: 'Failed to add movie. Please ensure you are logged in and have permissions.' };
   }
 }
 
@@ -52,6 +52,7 @@ export async function getMovieById(id: string) {
   if (docSnap.exists()) {
     return { id: docSnap.id, ...docSnap.data() };
   } else {
+    // This allows the Edit page to handle not found cases gracefully.
     return undefined;
   }
 }
@@ -68,10 +69,9 @@ export async function updateMovie(id: string, formData: MovieFormData) {
   }
   
   const docRef = doc(firestore, 'movies', id);
+  // We exclude userId from the update data. The security rules will check ownership
+  // based on the existing document's userId, and we don't want to allow changing the owner.
   const { userId, ...updateData } = validatedFields.data;
-
-  // Note: We don't need to check for userId here because the security rules handle ownership.
-  // The userId is also not part of the data being updated to prevent it from being changed.
 
   try {
     await updateDoc(docRef, updateData);
@@ -80,7 +80,8 @@ export async function updateMovie(id: string, formData: MovieFormData) {
     redirect(`/movies/${id}`);
   } catch (error) {
     console.error("Error updating document: ", error);
-    return { message: 'Failed to update movie. Check permissions.' };
+    // This message will be shown if security rules deny the update.
+    return { message: 'Failed to update movie. You must be the owner to perform this action.' };
   }
 }
 
@@ -93,7 +94,8 @@ export async function deleteMovie(id: string) {
     redirect('/');
   } catch (error) {
     console.error("Error deleting document: ", error);
-    throw new Error('Failed to delete movie. Check permissions.');
+    // Throwing an error here will be caught by the calling component's try/catch block.
+    throw new Error('Failed to delete movie. You must be the owner to perform this action.');
   }
 }
 
