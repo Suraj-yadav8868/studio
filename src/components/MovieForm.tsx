@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { movieSchema, type MovieFormData } from '@/lib/schemas';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { addMovie, updateMovie } from '@/app/actions';
-import { useTransition } from 'react';
+import { useTransition, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 
@@ -34,10 +34,20 @@ export default function MovieForm({ movie }: MovieFormProps) {
       title: '',
       description: '',
       genre: '',
-      releaseYear: new Date().getFullYear(),
+      releaseYear: undefined, // Initialize as undefined
       posterId: '',
     },
   });
+
+  useEffect(() => {
+    if (!movie) {
+      // Set the default year only on the client-side for new movies
+      form.reset({
+        ...form.getValues(),
+        releaseYear: new Date().getFullYear(),
+      });
+    }
+  }, [form, movie]);
 
   const onSubmit = (data: MovieFormData) => {
     if (!user) {
@@ -119,7 +129,7 @@ export default function MovieForm({ movie }: MovieFormProps) {
               <FormItem>
                 <FormLabel>Release Year</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="2024" {...field} />
+                  <Input type="number" placeholder="2024" {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
