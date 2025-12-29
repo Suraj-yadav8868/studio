@@ -4,25 +4,14 @@ import { movieSchema, type MovieFormData } from '@/lib/schemas';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { enhanceMoviePoster } from '@/ai/flows/enhance-movie-poster';
-import { collection, addDoc, doc, updateDoc, deleteDoc, getDoc, getFirestore } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
-import { getAuth } from 'firebase/auth';
-import { headers } from 'next/headers';
 
 // Since server actions run on the server, we can initialize a server-side instance of firestore
 // Note: This is a temporary solution for this specific file.
 // In a more robust app, you might have a separate admin SDK setup.
 const { firestore } = initializeFirebase();
 const moviesCollection = collection(firestore, 'movies');
-
-async function getUserId(): Promise<string | null> {
-    // Server Actions can't use the client-side `useUser` hook.
-    // In a real app with full authentication, you'd get the user from the session.
-    // For now, we'll assume anonymous auth and that the client passes the UID.
-    // A better approach would be to verify a token passed in headers.
-    return headers().get('x-user-id');
-}
-
 
 // CREATE
 export async function addMovie(formData: MovieFormData) {
@@ -33,6 +22,10 @@ export async function addMovie(formData: MovieFormData) {
       errors: validatedFields.error.flatten().fieldErrors,
       message: 'Validation failed. Please check the fields.',
     };
+  }
+
+  if (!validatedFields.data.userId) {
+    return { message: 'You must be logged in to add a movie.' };
   }
 
   try {
