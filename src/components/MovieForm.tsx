@@ -34,20 +34,19 @@ export default function MovieForm({ movie }: MovieFormProps) {
       title: '',
       description: '',
       genre: '',
-      releaseYear: undefined, // Initialize as undefined
+      releaseYear: undefined, // Initialize as undefined to prevent hydration mismatch
       posterId: '',
     },
   });
 
   useEffect(() => {
+    // This effect runs only on the client, after hydration
     if (!movie) {
-      // Set the default year only on the client-side for new movies
-      form.reset({
-        ...form.getValues(),
-        releaseYear: new Date().getFullYear(),
-      });
+      // If it's a new movie form, set the default release year to the current year
+      form.setValue('releaseYear', new Date().getFullYear());
     }
   }, [form, movie]);
+
 
   const onSubmit = (data: MovieFormData) => {
     if (!user) {
