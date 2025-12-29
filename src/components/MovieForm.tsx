@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { movieSchema, type MovieFormData } from '@/lib/schemas';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { addMovie, updateMovie } from '@/app/actions';
-import { useTransition, useEffect } from 'react';
+import { useTransition } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 
@@ -20,9 +20,10 @@ import { useRouter } from 'next/navigation';
 
 type MovieFormProps = {
   movie?: Movie;
+  defaultReleaseYear?: number;
 };
 
-export default function MovieForm({ movie }: MovieFormProps) {
+export default function MovieForm({ movie, defaultReleaseYear }: MovieFormProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
@@ -34,19 +35,10 @@ export default function MovieForm({ movie }: MovieFormProps) {
       title: '',
       description: '',
       genre: '',
-      releaseYear: undefined, // Initialize as undefined to prevent hydration mismatch
+      releaseYear: defaultReleaseYear,
       posterId: '',
     },
   });
-
-  useEffect(() => {
-    // This effect runs only on the client, after hydration
-    if (!movie) {
-      // If it's a new movie form, set the default release year to the current year
-      form.setValue('releaseYear', new Date().getFullYear());
-    }
-  }, [form, movie]);
-
 
   const onSubmit = (data: MovieFormData) => {
     if (!user) {
